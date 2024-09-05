@@ -12,7 +12,7 @@ import re
 from functools import partial
 from kivy.uix.label import Label
 from kivy.graphics import Color, Rectangle, Line, Ellipse, RoundedRectangle
-from kivy.core.window import Window
+#from kivy.core.window import Window
 
 #Window.size = (600, 800)
 
