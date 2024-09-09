@@ -7,51 +7,32 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
 from kivy.uix.popup import Popup
+from kivy.properties import ListProperty
 import sqlite3
 import re
 from functools import partial
 from kivy.uix.label import Label
 from kivy.graphics import Color, Rectangle, Line, Ellipse, RoundedRectangle
-#from kivy.core.window import Window
-
-#Window.size = (600, 800)
-
+from kivy.core.window import Window
+from datetime import datetime
 
 
-###########################################################################
-#               Register Page Button
-class RoundToggleButton(ToggleButton):
+database = "database.db"
+con = sqlite3.connect(database)
+cur = con.cursor()
+
+
+#Custom Line
+class LineWidget(Widget):
     def __init__(self, **kwargs):
-        super(RoundToggleButton, self).__init__(**kwargs)
-        self.size_hint = (None, None)
-        self.size = (150, 150)
-        self.background_color = (0, 0, 0, 0)  # Make the default background transparent
-        with self.canvas.before:
-            #Color(97/255, 64/255, 17/255, 1)#	98, 0, 238
-            Color(98/255, 0/255, 238/255, 1)
-            self.ellipse = Ellipse(pos=self.pos, size=self.size)
-        self.bind(pos=self.update_ellipse, size=self.update_ellipse)
-        self.bind(state=self.on_state)
-
-    def update_ellipse(self, *args):
-        self.ellipse.pos = self.pos
-        self.ellipse.size = self.size
-
-    def on_state(self, *args):
-        # Change color based on the toggle state
-        if self.state == 'down':
-            self.canvas.before.clear()
-            with self.canvas.before:
-                Color(23/255, 156/255, 19/255, 1)  # Green color when toggled on
-                self.ellipse = Ellipse(pos=self.pos, size=self.size)
- 
-        else:
-            self.canvas.before.clear()
-            with self.canvas.before:
-                Color(98/255, 0/255, 238/255, 1)  # Red color when toggled off
-                self.ellipse = Ellipse(pos=self.pos, size=self.size)
-###########################################################################
-#                     Class Page Button
+        super(LineWidget, self).__init__(**kwargs)
+        with self.canvas:
+            Color(0, 0, 0, 1)
+            self.line = Line(points=[self.x, self.center_y, self.width, self.center_y], width=10)
+        self.bind(pos=self.update_line, size=self.update_line)
+    def update_line(self, *args):
+        self.line.points = [self.x, self.center_y, self.right, self.center_y]
+######################################################################
 
 class RoundToggleButton2(ToggleButton):
     def __init__(self, **kwargs):
@@ -76,19 +57,30 @@ class RoundToggleButton2(ToggleButton):
         self.canvas.before.clear()
         if self.state == 'down':
             with self.canvas.before:
-                Color(23/255, 156/255, 19/255, 1)  # Green color when toggled on
+                Color(23/255, 156/255, 19/255, 1) 
                 self.rrect = RoundedRectangle(
                     pos=self.pos, size=self.size, radius=[20] * 4
                 )
         else:
             with self.canvas.before:
-                Color(98/255, 0/255, 238/255, 1)   # Red color when toggled off
+                Color(98/255, 0/255, 238/255, 1)  
                 self.rrect = RoundedRectangle(
                     pos=self.pos, size=self.size, radius=[20] * 4
                 )
 
+
+################################################################################
+class RoundToggleButton(RoundToggleButton2):
+    
+    def __init__(self, **kwargs):
+        super(RoundToggleButton, self).__init__(**kwargs)
+        self.size_hint = (0.3333, None)
+        self.height =200 
+
 ##################################################################################
 #                      submit and cance button
+
+
 class RoundB(Button):
     def __init__(self, **kwargs):
         super(RoundB, self).__init__(**kwargs)
@@ -96,32 +88,34 @@ class RoundB(Button):
         self.background_color = (0, 0, 0, 0)  # Transparent background
         
         with self.canvas.before:
-            Color(98/255, 0/255, 238/255, 1) 
+            Color(98/255, 0/255, 238/255, 1)  # Initial purple color
             self.rrect = RoundedRectangle(
-                pos=self.pos, size=self.size, radius=[20] * 4
+                pos=self.pos, size=self.size, radius=[self.height / 2] * 4  # More rounded corners
             )
         
+        # Bind to update the shape and handle button press/release
         self.bind(pos=self.update_rrect, size=self.update_rrect)
         self.bind(on_press=self.on_press, on_release=self.on_release)
 
     def update_rrect(self, *args):
         self.rrect.pos = self.pos
         self.rrect.size = self.size
+        self.rrect.radius = [self.height / 2] * 4  # Update to keep rounded corners
 
     def on_press(self, *args):
         self.canvas.before.clear()
         with self.canvas.before:
             Color(23/255, 156/255, 19/255, 1)  # Green color when pressed
             self.rrect = RoundedRectangle(
-                pos=self.pos, size=self.size, radius=[20] * 4
+                pos=self.pos, size=self.size, radius=[self.height / 2] * 4  # Rounded on press
             )
 
     def on_release(self, *args):
         self.canvas.before.clear()
         with self.canvas.before:
-            Color(98/255, 0/255, 238/255, 1)    # Red color when released
+            Color(98/255, 0/255, 238/255, 1)  # Purple color when released
             self.rrect = RoundedRectangle(
-                pos=self.pos, size=self.size, radius=[20] * 4
+                pos=self.pos, size=self.size, radius=[self.height / 2] * 4  # Rounded on release
             )
 ############################################################################################
 
@@ -160,27 +154,39 @@ class MyLayout(TabbedPanel):
         self.load_saved_classrooms()
 
         try:
-            database = "database.db"
-            con = sqlite3.connect(database)
-            cur = con.cursor()
+            with open("current_s_t.txt","w") as f:
+                f.write("EMPTY")
 
             
-            cur.execute("CREATE TABLE IF NOT EXISTS current_s_t(name text)")
+            # cur.execute("CREATE TABLE IF NOT EXISTS current_s_t(name text)")
             cur.execute("CREATE TABLE IF NOT EXISTS current_roll(roll INTEGER, status INTEGER)")
-            
-
-            cur.close()
+            cur.execute("CREATE TABLE IF NOT EXISTS latest_submit_table(name text, present INTEGER, absent INTEGER, date text)") 
             con.commit()
-            con.close()
+
         except:
             print("Error!! 12")
+
+
+    def table_name_validity_check(self, name):
+
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cur.fetchall()
+            
+        for table in tables:
+            table_name = table[0]
+            if table_name=="current_roll" or table_name=="latest_submit_table":
+                continue
+            if table_name==name:
+                return -1
+        return 1
+
 
         
 
     def load_saved_classrooms(self):
-        database = "database.db"
-        con = sqlite3.connect(database)
-        cur = con.cursor()
+        self.ids._scroll.scroll_y = 1
+        self.ids._scroll2.scroll_y = 1
+
         try:
             # Query to get all table names
             cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
@@ -188,9 +194,9 @@ class MyLayout(TabbedPanel):
             
             for table in tables:
                 table_name = table[0]
-                if table_name=="current_s_t" or table_name=="current_roll":
+                if table_name=="current_roll" or table_name=="latest_submit_table":
                     continue
-                cat = RoundToggleButton2(text=table_name, font_size=24, group="A")
+                cat = RoundToggleButton2(text=table_name, font_size=25, group="A")
                 cat.bind(on_press=self.class_func)
                 self.ids.cid.add_widget(cat)
                 
@@ -199,21 +205,19 @@ class MyLayout(TabbedPanel):
             print(f"An error occurred 21: {e}")
         
         finally:
-            cur.close()
-            con.close()
-
+            pass
 
     
     def add_class(self):
         #creating popup content
         content = BoxLayout(orientation='vertical',padding=10,spacing=10)
-        input_name = TextInput(hint_text="Enter ClassRoom Name to Add", multiline=False,size_hint=(1,0.3), font_size=20, halign='center')
+        input_name = TextInput(hint_text="Enter ClassRoom Name to Add", multiline=False,size_hint=(1,0.3), font_size=32, halign='center')
         content.add_widget(input_name)
 
         #start roll, end roll
         content2 = GridLayout(cols=2,padding=10,spacing=20,size_hint=(1,0.33))
-        input_name2 = TextInput(hint_text="Start Roll", multiline=False,size_hint=(0.4,0.3), font_size=20, halign='center')
-        input_name3 = TextInput(hint_text="End Roll", multiline=False,size_hint=(0.4,0.3), font_size=20, halign='center')
+        input_name2 = TextInput(hint_text="Start Roll", multiline=False,size_hint=(0.4,0.3), font_size=32, halign='center')
+        input_name3 = TextInput(hint_text="End Roll", multiline=False,size_hint=(0.4,0.3), font_size=32, halign='center')
         content2.add_widget(input_name2)
         content2.add_widget(input_name3)
         content.add_widget(content2)
@@ -222,6 +226,22 @@ class MyLayout(TabbedPanel):
             cn = input_name.text 
             cn_start = input_name2.text
             cn_end = input_name3.text
+
+            ret = self.table_name_validity_check(cn)
+
+            if ret==-1:
+                self.error_popup("Class Already Exist")
+                return
+
+            if cn=="":
+                self.error_popup("Enter a valid name!")
+                return
+
+            if not re.match(r'^\w+$', cn):
+                # raise ValueError("Invalid classname. Use only letters, numbers, and underscores.")
+                #Create A popup
+                self.error_popup("Don't use space and special char!")
+                return 
 
             try:
                 int_va1 = int(cn_start)
@@ -233,15 +253,11 @@ class MyLayout(TabbedPanel):
             if(int(cn_start)>int(cn_end)):
                 self.error_popup("Start roll must be greater!")
                 return
-            if not re.match(r'^\w+$', cn):
-                # raise ValueError("Invalid classname. Use only letters, numbers, and underscores.")
-                #Create A popup
-                self.error_popup("Don't use space and special char!")
-                return 
+            
 
             if cn:
                 #this line creates button(classroom) dynamically on id cid
-                cat = RoundToggleButton2(text=cn, font_size=24, group="A")
+                cat = RoundToggleButton2(text=cn, font_size=25, group="A")
                 cat.bind(on_press=self.class_func)
                 self.ids.cid.add_widget(cat)
                 self.create_data_table(cn,cn_start,cn_end)
@@ -251,7 +267,7 @@ class MyLayout(TabbedPanel):
             popup.dismiss()
 
         #creating submit button
-        sb = Button(text="Submit",font_size=18, size_hint=(1, 0.3))
+        sb = Button(text="Submit",font_size=32, size_hint=(1, 0.3))
         sb.bind(on_press=on_submit)
         content.add_widget(sb)
 
@@ -265,9 +281,6 @@ class MyLayout(TabbedPanel):
         # Convert roll numbers to integers
         start_roll = int(startroll)
         end_roll = int(endroll)
-        
-        con = sqlite3.connect("database.db")
-        cur = con.cursor()
 
         try:
             # Create the table if it doesn't exist
@@ -280,92 +293,68 @@ class MyLayout(TabbedPanel):
             
             # Debugging: Print all rows in the table
             cur.execute(f"SELECT * FROM {classname}")
-            rows = cur.fetchall()
-            for row in rows:
-                print(row)
+       
         
         except sqlite3.Error as e:
             print(f"Error occurred: {e}")
         
         finally:
             # Close the cursor and connection
-            cur.close()
             con.commit()
-            con.close()
 
     def class_func(self,instance):
         #When pressing on a class_name(CSEA) this function executes
         #see datatable current_selected_table to get the selected table name
 
         if instance.state=='down':
-            database = "database.db"
-            con = sqlite3.connect(database)
-            cur = con.cursor()
-            try:
-                cur.execute(f"DELETE FROM current_s_t")
-                cur.execute(f"DELETE FROM current_roll")
-            except:
-                print("F00000~")
-            qw = "INSERT INTO current_s_t (name) VALUES (?)"
-            cur.execute(qw, (instance.text,))
-            cur.close()
-            con.commit()
-            con.close()
+            self.ids._scroll.scroll_y = 1
+            self.ids._scroll2.scroll_y = 1
+            cur.execute("DELETE FROM current_roll")
+
+            with open("current_s_t.txt","w") as f:
+                f.write(f"{instance.text}")
+            
 
             self.update_register_page(instance.text)
             self.classDetails()
             
-             
-            #table details
-            #DEBUG
-            #self.view_table_details(instance.text)
+            
         else:
-            database = "database.db"
-            con = sqlite3.connect(database)
-            cur = con.cursor()
-            try:
-                cur.execute(f"DELETE FROM current_s_t")
-            except:
-                print("F000001~")
-            qw = "INSERT INTO current_s_t (name) VALUES (?)"
-            cur.execute(qw, ("EMPTY",))
+            self.ids._scroll.scroll_y = 1
+            self.ids._scroll2.scroll_y = 1
 
-            cur.close()
-            con.commit()
-            con.close()
+            with open("current_s_t.txt","w") as f:
+                f.write("EMPTY")
+            cur.execute("DELETE FROM current_roll")
+
 
             self.ids.reg.clear_widgets()
             self.ids.jr.clear_widgets()
 
+        
+
     
     def update_register_page(self,class_name):
         self.ids.reg.clear_widgets()
-        database = "database.db"
-        con = sqlite3.connect(database)
-        cur = con.cursor()
+
         cur.execute(f"SELECT * from {class_name}")
         row = cur.fetchone()
         while row:
             i = row[0]
-            # btn = ToggleButton(text=str(i),font_size=32,size_hint_x=None, size_hint_y=None,height=100, width=180)
-            btn = RoundToggleButton(text=str(i),font_size=32)
+            btn = RoundToggleButton(text=str(i),font_size=28)
             btn.bind(on_press =partial(self.on_toggle_button,roll=i))
             self.ids.reg.add_widget(btn)
             row = cur.fetchone()
 
     def clear_temp_data(self):
-        database = "database.db"
-        con = sqlite3.connect(database)
-        cur = con.cursor()
         cur.execute(f"DELETE FROM current_roll")
-        cur.execute(f"DELETE FROM current_s_t")
-        cur.close()
+        self.insert_empty()
         con.commit()
-        con.close()
+
 
     def delete_class(self):
         content = BoxLayout(orientation='vertical', padding=10, spacing=10)
-        input_name = TextInput(hint_text="Enter ClassRoom Name to Delete", size_hint=(1,0.3),font_size=20, multiline=False, halign='center')
+        input_name = TextInput(hint_text="Enter ClassRoom Name to Delete", size_hint=(1,0.3),font_size=32, multiline=False, halign='center')
         content.add_widget(input_name)
 
         def on_delete(instance):
@@ -374,14 +363,11 @@ class MyLayout(TabbedPanel):
             for child in self.ids.cid.children[:]:
                 if isinstance(child, ToggleButton) and child.text == class_name:
                     #Removing classroom details
-                    con = sqlite3.connect("database.db")
-                    cur = con.cursor()
 
                     cur.execute(f"DROP TABLE IF EXISTS {class_name}")
 
-                    cur.close()
                     con.commit()
-                    con.close()
+    
 
                     self.ids.cid.remove_widget(child)
                     self.ids.reg.clear_widgets()
@@ -400,65 +386,95 @@ class MyLayout(TabbedPanel):
     def on_toggle_button(self, instance, roll, *args):
         value = 1 if instance.state == 'down' else 0 
 
-        database = "database.db"
-        con = sqlite3.connect(database)
-        cur = con.cursor()
-
         #roll value
         li = [(roll,value)]
         cur.executemany("INSERT INTO current_roll VALUES(?, ?)", li)
-
-        
-        cur.close()
         con.commit()
-        con.close()
+
     
     def error_popup(self,txt):
         
         content = BoxLayout(orientation='vertical',padding=10,spacing=10)
-        lb = Label(text=txt, font_size=20)
+        lb = Label(text=txt, font_size=30)
         content.add_widget(lb)
         popup = Popup(title='Error Notice', content=content, size_hint=(0.8,0.3))
         popup.open()
 
     def final_submit(self):
         try:
-            con = sqlite3.connect("database.db")
-            cur = con.cursor()
-            cur.execute("SELECT * FROM current_s_t")
-            row = cur.fetchone()
-            if row[0]=='EMPTY':
+
+            myflag = 0
+            if self.ids._revbutton.state=="down":
+                myflag = 1
+
+            print(f"myflag:{myflag}")
+          
+            with open("current_s_t.txt","r") as f:
+                data = f.read()
+
+
+            class_name = data
+
+
+
+            if class_name=='EMPTY':
                 print("No Class Selected!")
                 self.error_popup("NO  CLASSROOM  SELECTED")
                 return
 
+
             d = {}
-            cur.execute("SELECT * FROM current_roll")
+            cur.execute("SELECT * FROM current_roll")  #for today
             row = cur.fetchone()
+            
             while row:
                 # print(f"{row[0]} -- {row[1]}")
                 d[row[0]]=row[1]
                 row = cur.fetchone()
 
+            counter = 0
+            for roll,sta in d.items():
+                if sta==1:
+                    counter+=1
+
+            
+
+            
+            total_st = 0
 
             d2 = {}
-            cur.execute("SELECT * FROM current_s_t")
-            row = cur.fetchone()
-            table_name = row[0]
+            table_name = data
 
             cur.execute(f"SELECT * FROM {table_name}")
             row = cur.fetchone()
             while row:
+                total_st+=1
                 d2[row[0]]=row[1]
                 row = cur.fetchone()
 
-            
-            for k,v in d.items():
-                for u,h in d2.items():
-                    if u==k:
-                        h=h+v 
-                        d2[u]=h
-                        break
+            present = 0
+            absent = 0
+
+            low = min(d2.keys()) 
+            high = max(d2.keys())
+
+            total = high-low + 1
+
+
+            if myflag == 0:
+                for k, v in d.items():
+                    if k in d2:
+                        present+=1
+                        d2[k] += v 
+            else:           
+                for i in range(low, high + 1):
+                    if d.get(i) == 1: 
+                        absent+=1
+                        continue
+                    d2[i] += 1  
+
+                
+
                     
             #delete previous records from table
             cur.execute(f"DELETE FROM {table_name}")
@@ -475,19 +491,40 @@ class MyLayout(TabbedPanel):
             con.commit()
             #con.close()
 
+
+            #Working --- 
+            
+
+            
+            cur.execute("DELETE FROM latest_submit_table")
+
+            today = datetime.today()
+            year = today.year
+            month = today.month
+            day = today.day
+
+            today_date = str(day)+"-"+str(month)+"-"+str(year)
+
+            qw = "INSERT INTO latest_submit_table (name,present,absent,date) VALUES (?,?,?,?)"
+            cur.execute(qw, (class_name,counter,total_st-counter,today_date,))
+
+            print(f"Class {class_name} -> Present: {counter} student. Absent: {total_st-counter} Date:{today_date}")
+
+
+            if self.ids._revbutton.state=="normal":
+                self.ids._date.text = "Date: " + today_date + "\n\n" + "Class: " + class_name + "\n" + "Present: " + str(present) + "\n"+"Absent: " + str(total-present)
+            else:
+                self.ids._date.text = "Date: " + today_date + "\n\n" + "Class: " + class_name + "\n" + "Present: " + str(total-absent) + "\n"+"Absent: " + str(absent)
+            #############################
+
+
             self.classDetails()
 
             #clearing current_roll table
             cur.execute(f"DELETE FROM current_roll")
-            cur.execute(f"DELETE FROM current_s_t")
-            cur.execute("INSERT INTO current_s_t VALUES('EMPTY')")
+            self.insert_empty()
 
-            cur.close()
             con.commit()
-            con.close()
-
-            #Debug
-            #self.view_table_details(table_name)
             
             self.reset_toggle_buttons()
             self.ids.reg.clear_widgets()
@@ -502,6 +539,11 @@ class MyLayout(TabbedPanel):
             if isinstance(child, ToggleButton):
                 child.state = 'normal'
 
+
+    
+
+
+
     def cancel_btn(self):
         #reset the temp files and toggle button
         self.clear_temp_data()
@@ -514,14 +556,16 @@ class MyLayout(TabbedPanel):
 
         #clear previous data/widgets from details as no class is selected
         self.ids.jr.clear_widgets()
+        self.insert_empty()
+
+    def insert_empty(self):
+        with open("current_s_t.txt","w") as f:
+            f.write("EMPTY")
 
 
 
     
     def view_table_details(self,name):
-        database = "database.db"
-        con = sqlite3.connect(database)
-        cur = con.cursor()
 
         # print(f"DataBase--{name}----***\n\n")
 
@@ -531,25 +575,26 @@ class MyLayout(TabbedPanel):
             # print(row)
             row = cur.fetchone()
         # print("\nEnd Of DataBase")
-        cur.close()
         con.commit()
-        con.close()
+
 
     def classDetails(self):
         #clear previous data/widgets
         self.ids.jr.clear_widgets()
 
-        con = sqlite3.connect("database.db")
-        cur = con.cursor()
-        cur.execute("SELECT * FROM current_s_t")
-        row = cur.fetchone()
-        tb = row[0]
+        with open("current_s_t.txt","r") as f:
+            tb = f.read()
+        
 
-        lab = CustomLabel(text="ClassRoom: "+tb,font_size=32,bold=True,color=(1, 1, 1, 1),size_hint=(1,None), height=100)
+        lab = Label(text="CLASS:  "+tb,font_size=40,bold=True,color=(0, 0, 0, 1),size_hint=(1,None), height=100)
         self.ids.jr.add_widget(lab)
 
-        # lab = CustomLabel(text="***************",font_size=32,bold=True,color=(1, 1, 1, 1),size_hint=(1,None), height=100)
-        # self.ids.jr.add_widget(lab)
+        fgtext = "###################################################################################################"
+        lab = Label(text=fgtext,color=(0,0,0, 1), size_hint=(1,None), height=100)
+        self.ids.jr.add_widget(lab)
+
+        print(f"\n\nTable name tb:{tb}")
+        
                 
 
         cur.execute(f"SELECT * FROM {tb}")
@@ -559,14 +604,23 @@ class MyLayout(TabbedPanel):
             state = row[1]
 
             pa = "Roll No: "+str(roll)+"    "+"Present Day: "+str(state)
-            lab = CustomLabel(text=pa,font_size=32,bold=False,color=(1, 1, 1, 1),size_hint=(1,None), height=100)
+            lab = Label(text=pa,font_size=32,bold=True,color=(0,0,0, 1),size_hint=(1,None), height=100)
             self.ids.jr.add_widget(lab)
+
+            fgtext = "###################################################################################################"
+            
+            lab = Label(text=fgtext,color=(0,0,0, 1), size_hint=(1,None), height=100)
+            self.ids.jr.add_widget(lab)
+
 
             row = cur.fetchone()
 
+
+    def reverse(self):
+        print(f"{self.ids._revbutton.state}")
+        
+
 ###########################################################################
-
-
 
 class AttendenceApp(App):
     def build(self):
