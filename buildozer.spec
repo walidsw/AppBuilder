@@ -1,13 +1,13 @@
 [app]
 
 # (str) Title of your application
-title = RollC
+title = CALLER
 
 # (str) Package name
-package.name = sw
+package.name = walid
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = sw.redteam
+package.domain = sw.redteamblue
 
 # (str) Source code where the main.py live
 source.dir = .
@@ -16,7 +16,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 
 # (list) List of inclusions using pattern matching
-source.include_patterns = images/*.png
+source.include_patterns = images/*.png, images/*.jpg
 
 # (list) Source files to exclude (let empty to not exclude anything)
 #source.exclude_exts = spec
@@ -29,7 +29,7 @@ source.include_patterns = images/*.png
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 0.1
+version = 2.0
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -81,7 +81,7 @@ fullscreen = 0
 # red, blue, green, black, white, gray, cyan, magenta, yellow, lightgray,
 # darkgray, grey, lightgrey, darkgrey, aqua, fuchsia, lime, maroon, navy,
 # olive, purple, silver, teal.
-android.presplash_color = yellow
+android.presplash_color = white
 
 # (string) Presplash animation using Lottie format.
 # see https://lottiefiles.com/ for examples and https://airbnb.design/lottie/
