@@ -1,10 +1,10 @@
 [app]
 
 # (str) Title of your application
-title = CALLER
+title = CALL
 
 # (str) Package name
-package.name = walid
+package.name = sw
 
 # (str) Package domain (needed for android/ios packaging)
 package.domain = sw.redteamblue
